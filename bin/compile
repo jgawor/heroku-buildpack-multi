@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -e
 
@@ -12,16 +12,27 @@ function indent() {
 
 unset GIT_DIR
 
-for BUILDPACK in $(cat $1/.buildpacks); do
+while read LINE; do
   dir=$(mktemp -t buildpackXXXXX)
   rm -rf $dir
 
+  args=( $LINE )
+  BUILDPACK=${args[0]}
   url=${BUILDPACK%#*}
   branch=${BUILDPACK#*#}
-
+  
   if [ "$branch" == "$url" ]; then
     branch=""
   fi
+
+  input_dir=${args[1]}
+  if [[ "$input_dir" != /* ]]; then
+      input_dir=$1/$input_dir
+  fi
+
+  echo "url=$url"
+  echo "branch=$branch"
+  echo "input_dir=$input_dir"
 
   if [ "$url" != "" ]; then
     echo "=====> Downloading Buildpack: $url"
@@ -41,22 +52,22 @@ for BUILDPACK in $(cat $1/.buildpacks); do
     # we'll get errors later if these are needed and don't exist
     chmod -f +x $dir/bin/{detect,compile,release} || true
 
-    framework=$($dir/bin/detect $1)
+    framework=$($dir/bin/detect $input_dir)
 
     if [ $? == 0 ]; then
       echo "=====> Detected Framework: $framework"
-      $dir/bin/compile $1 $2 $3
+      $dir/bin/compile $input_dir $2 $3
 
       if [ $? != 0 ]; then
         exit 1
       fi
 
       if [ -x $dir/bin/release ]; then
-        $dir/bin/release $1 > $1/last_pack_release.out
+        $dir/bin/release $input_dir > $1/last_pack_release.out
       fi
     fi
   fi
-done
+done < $1/.buildpacks
 
 if [ -e $1/last_pack_release.out ]; then
   echo "Using release configuration from last framework ($framework)."
