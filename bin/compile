@@ -26,6 +26,9 @@ while read LINE; do
   fi
 
   input_dir=${args[1]}
+  if [[ "$input_dir" == "" ]]; then
+      input_dir=$1
+  fi
 
   echo "url=$url"
   echo "branch=$branch"
